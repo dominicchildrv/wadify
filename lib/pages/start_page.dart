@@ -2,12 +2,79 @@ import 'package:flutter/material.dart';
 import 'login_page.dart';
 import 'signup_page.dart';
 import 'home_page.dart';
+import 'package:http/http.dart' as http;
+import 'config.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 ///File download from FlutterViz- Drag and drop a tools. For more details visit https://flutterviz.io/
 
 
-class StartPage extends StatelessWidget {
+
+
+class StartPage extends StatefulWidget{
+  @override
+
+  _StartPage createState() => _StartPage();
+}
+
+
+
+
+
+class _StartPage extends State<StartPage>{
+
+  TextEditingController emailController = TextEditingController();
+  TextEditingController passwordController = TextEditingController();
+  bool _isNotValidate = false;
+
+  late SharedPreferences prefs;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    initSharedPref();
+  }
+
+  void initSharedPref() async{
+    prefs = await SharedPreferences.getInstance();
+  }
+
+  void loginUser() async {
+    if(emailController.text.isNotEmpty && passwordController.text.isNotEmpty){
+
+      var regBody = {
+        "email": emailController.text,
+        "password": passwordController.text
+      };
+
+      var response = await http.post(
+          Uri.parse(login),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode(regBody)
+      );
+
+      var jsonResponse = jsonDecode(response.body);
+      if(response.statusCode == 200 && jsonResponse['status']) {
+        var myToken = jsonResponse['token'];
+        prefs.setString('token', myToken);
+        Navigator.push(context, MaterialPageRoute(builder: (context) => HomePage(token: myToken)));
+      } else {
+        // Display an error message
+        final snackBar = SnackBar(content: Text(jsonResponse['message'] ?? "An error occurred"));
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      }
+    } else {
+      setState(() {
+        _isNotValidate = true;
+      });
+    }
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,7 +116,7 @@ class StartPage extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: 16, horizontal: 0),
                   child: TextField(
-                    controller: TextEditingController(),
+                    controller: emailController,
                     obscureText: false,
                     textAlign: TextAlign.start,
                     maxLines: 1,
@@ -91,7 +158,7 @@ class StartPage extends StatelessWidget {
                   ),
                 ),
                 TextField(
-                  controller: TextEditingController(),
+                  controller: passwordController,
                   obscureText: true,
                   textAlign: TextAlign.start,
                   maxLines: 1,
@@ -192,10 +259,7 @@ class StartPage extends StatelessWidget {
                         flex: 1,
                         child: MaterialButton(
                           onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => HomePage()),
-                            );
+                            loginUser();
                           },
                           color: Color(0xff3a57e8),
                           elevation: 0,
@@ -279,4 +343,11 @@ class StartPage extends StatelessWidget {
       ),
     );
   }
+
 }
+
+
+
+
+
+
